@@ -1,11 +1,15 @@
 package com.test.flashair.you.flashairtest2;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -17,12 +21,17 @@ import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
 
@@ -34,12 +43,16 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     String rootDir = "DCIM/101NCD90";
     String directoryName = rootDir;
 
-    ArrayAdapter<String> listAdapter;
+    SimpleAdapter listAdapter;
+    int checkInterval = 5000;
+    Handler updateHandler;
+    boolean viewingList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        viewingList = true;
         try {
             backButton = (Button) findViewById(R.id.button1);
             backButton.getBackground().setColorFilter(Color.rgb(65, 138, 216), PorterDuff.Mode.SRC_IN);
@@ -61,6 +74,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             Log.e("ERROR", "ERROR in CODE:" + e.toString());
             e.printStackTrace();
         }
+        updateHandler = new Handler();
+        startUpdate();
 /*
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -84,6 +99,45 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        viewingList = hasFocus;
+    }
+
+    public boolean checkIfListView(){
+        return viewingList;
+    }
+
+    public Runnable statusChecker = new Runnable() {
+        @Override
+        public void run() {
+            if (checkIfListView()){
+                new AsyncTask<String, Void, String>(){
+                    @Override
+                    protected String doInBackground(String... params){
+                        return FlashAirRequest.getString(params[0]);
+                    }
+
+                    @Override
+                    protected void onPostExecute(String status){
+                        if (status.equals("1")){
+                            listDirectory(directoryName);
+                        }
+                    }
+                } .execute("http://192.168.0.11/command.cgi?op=102");
+            }
+            updateHandler.postDelayed(statusChecker, checkInterval);
+        }
+    };
+
+    public void startUpdate(){
+        statusChecker.run();
+    }
+
+    public void stopUpdate(){
+        updateHandler.removeCallbacks(statusChecker);
+    }
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
@@ -100,19 +154,22 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public void onItemClick(AdapterView<?> l, View v, int position, long id) {
-        Object downloadFile = l.getItemAtPosition(position);
-        Log.e("SASAKI", downloadFile.toString());
-        if (downloadFile.toString().endsWith("/")){
-
-        } else if (downloadFile.toString().toLowerCase(Locale.getDefault()).endsWith(".jpg")) {
-            Intent viewImageIntent = new Intent(this, ImageViewActivity.class);
-            viewImageIntent.putExtra("downloadFile", downloadFile.toString());
-            viewImageIntent.putExtra("directoryName", directoryName);
-            MainActivity.this.startActivity(viewImageIntent);
+        Object item = l.getItemAtPosition(position);
+        Log.e("SASAKI", item.toString());
+        if (item instanceof Map<?,?>){
+            Map<String, Object> mapItem = (Map<String, Object>)item;
+            Object downloadFile = mapItem.get("fname");
+            if (downloadFile.toString().endsWith("/")){
+                String dirName = downloadFile.toString().substring(0, downloadFile.toString().length()-1);
+                directoryName = directoryName + "/" + dirName;
+                listDirectory(directoryName);
+            } else if ( downloadFile.toString().toLowerCase((Locale.getDefault())).endsWith(".jpg")) {
+                Intent viewImageIntent = new Intent(this, ImageViewActivity.class);
+                viewImageIntent.putExtra("downloadFile", downloadFile.toString());
+                viewImageIntent.putExtra("directoryName", directoryName);
+                MainActivity.this.startActivity(viewImageIntent);
+            }
         }
-
-
-
     }
 
     public void listRootDirectory() {
@@ -136,8 +193,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             protected String doInBackground(String... params) {
                 String dir = params[0];
                 Log.i("INFO:", dir);
-                String fileCount = FlashAirRequest.getString("http://192.168.0.11/command.cgi?op=101&DIR=" + dir);
-                return fileCount;
+                return FlashAirRequest.getString("http://192.168.0.11/command.cgi?op=101&DIR=" + dir);
             }
 
             @Override
@@ -160,7 +216,31 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         fileNames.add(allFiles[i] + "/");
                     }
                 }
-                listAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, fileNames);
+
+                ArrayList<Map<String, Object>> data = new ArrayList<Map<String, Object>>();
+                for (int i = 0; i < fileNames.size(); i++){
+                    String fileName = "http://192.168.0.11/thumbnail.cgi?" + directoryName + "/" + fileNames.get(i);
+                    Map<String, Object> entry = new HashMap<String, Object>();
+                    BitmapDrawable drawIcon = null;
+                    if ( (fileName.toLowerCase(Locale.getDefault()).endsWith((".jpg")))){
+                        Bitmap thumbnail = FlashAirRequest.getBitmap(fileName);
+                        drawIcon = new BitmapDrawable(getResources(), thumbnail);
+                    }
+                    if (drawIcon == null){
+                        entry.put("thmb", R.drawable.ic_launcher);
+                    } else {
+                        entry.put("thmb", drawIcon);
+                    }
+                    entry.put("fname", fileNames.get(i));
+                    data.add(entry);
+                }
+                listAdapter = new SimpleAdapter(
+                        MainActivity.this,
+                        data,
+                        android.R.layout.activity_list_item,
+                        new String[]{"thmb", "fname"},
+                        new int[]{android.R.id.icon, android.R.id.text1});
+                listAdapter.setViewBinder(new CustomViewBinder());
                 return listAdapter;
             }
             @Override
@@ -173,5 +253,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 listView.setOnItemClickListener(MainActivity.this);
             }
         }.execute(dir);
+    }
+
+    class CustomViewBinder implements SimpleAdapter.ViewBinder {
+
+        @Override
+        public boolean setViewValue(View view, Object data, String textRepresentation) {
+            if ((view instanceof ImageView) && (data instanceof Drawable)) {
+                ImageView imageView = (ImageView) view;
+                BitmapDrawable thumbnail = (BitmapDrawable) data;
+                imageView.setImageDrawable(thumbnail);
+                return true;
+            }
+            return false;
+        }
     }
 }
