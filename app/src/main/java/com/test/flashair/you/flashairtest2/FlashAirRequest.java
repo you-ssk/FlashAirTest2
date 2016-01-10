@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -21,7 +22,9 @@ public class FlashAirRequest {
         String result = "";
         try{
             URL url = new URL(command);
-            URLConnection urlCon = url.openConnection();
+
+            //URLConnection urlCon = url.openConnection();
+            HttpURLConnection urlCon = (HttpURLConnection)url.openConnection();
             urlCon.connect();
             InputStream inputStream = urlCon.getInputStream();
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -49,14 +52,16 @@ public class FlashAirRequest {
         Bitmap resultBitmap = null;
         try{
             URL url = new URL(command);
-            URLConnection urlCon = url.openConnection();
+            //URLConnection urlCon = url.openConnection();
+            HttpURLConnection urlCon = (HttpURLConnection)url.openConnection();
             urlCon.connect();
             InputStream inputStream = urlCon.getInputStream();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            byte[] byteChunk = new byte[1024];
+            byte[] byteChunk = new byte[2048];
             int bytesRead = 0;
             while ( (bytesRead = inputStream.read(byteChunk)) != -1){
                 byteArrayOutputStream.write(byteChunk, 0, bytesRead);
+                Log.i("getBitmap", "bytesRead = " + bytesRead);
             }
             byte[] byteArray = byteArrayOutputStream.toByteArray();
             BitmapFactory.Options bfOptions = new BitmapFactory.Options();
@@ -70,6 +75,7 @@ public class FlashAirRequest {
             Log.e("","ERROR: " + e.toString());
             e.printStackTrace();
         }
+        Log.i("getBitmap", "end");
         return resultBitmap;
     }
 }

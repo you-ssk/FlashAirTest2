@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Parcelable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -27,6 +28,8 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
@@ -40,6 +43,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     TextView currentDirText;
     TextView numFilesText;
 
+    //String flashairName = "192.168.0.11";
+    String flashairName = "flashair";
+
     String rootDir = "DCIM/101NCD90";
     String directoryName = rootDir;
 
@@ -51,6 +57,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        String[] perms = {
+                "android.permission.WRITE_EXTERNAL_STORAGE",
+                "android.permission.READ_EXTERNAK_STORAGE",
+                "android.permission.INTERNET",
+                "android.permission.ACCESS_NETWORK_STATE",
+                "android.permission.ACCESS_WIFI_STATE"
+        };
+        int permsRequestCode = 200;
+        requestPermissions(perms, permsRequestCode);
         setContentView(R.layout.activity_main);
         viewingList = true;
         try {
@@ -104,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         viewingList = hasFocus;
     }
 
+
     public boolean checkIfListView(){
         return viewingList;
     }
@@ -124,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             listDirectory(directoryName);
                         }
                     }
-                } .execute("http://192.168.0.11/command.cgi?op=102");
+                } .execute("http://" + flashairName + "/command.cgi?op=102");
             }
             updateHandler.postDelayed(statusChecker, checkInterval);
         }
@@ -155,7 +171,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     public void onItemClick(AdapterView<?> l, View v, int position, long id) {
         Object item = l.getItemAtPosition(position);
-        Log.e("SASAKI", item.toString());
         if (item instanceof Map<?,?>){
             Map<String, Object> mapItem = (Map<String, Object>)item;
             Object downloadFile = mapItem.get("fname");
@@ -167,6 +182,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 Intent viewImageIntent = new Intent(this, ImageViewActivity.class);
                 viewImageIntent.putExtra("downloadFile", downloadFile.toString());
                 viewImageIntent.putExtra("directoryName", directoryName);
+                if (mapItem.containsKey("bmp"))
+                    viewImageIntent.putExtra("thumbnail", (Parcelable)mapItem.get("bmp"));
                 MainActivity.this.startActivity(viewImageIntent);
             }
         }
@@ -193,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             protected String doInBackground(String... params) {
                 String dir = params[0];
                 Log.i("INFO:", dir);
-                return FlashAirRequest.getString("http://192.168.0.11/command.cgi?op=101&DIR=" + dir);
+                return FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=101&DIR=" + dir);
             }
 
             @Override
@@ -207,7 +224,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             protected ListAdapter doInBackground(String... params) {
                 String dir = params[0];
                 ArrayList <String> fileNames = new ArrayList<String>();
-                String files = FlashAirRequest.getString("http://192.168.0.11/command.cgi?op=100&DIR=" + dir);
+                String files = FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=100&DIR=" + dir);
                 String[] allFiles = files.split("([,\n])");
                 for (int i = 2; i < allFiles.length; i=i+6){
                     if (allFiles[i].contains(".")) {
@@ -219,11 +236,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 ArrayList<Map<String, Object>> data = new ArrayList<Map<String, Object>>();
                 for (int i = 0; i < fileNames.size(); i++){
-                    String fileName = "http://192.168.0.11/thumbnail.cgi?" + directoryName + "/" + fileNames.get(i);
+                    String fileName = "http://" + flashairName + "/thumbnail.cgi?" + directoryName + "/" + fileNames.get(i);
                     Map<String, Object> entry = new HashMap<String, Object>();
                     BitmapDrawable drawIcon = null;
                     if ( (fileName.toLowerCase(Locale.getDefault()).endsWith((".jpg")))){
                         Bitmap thumbnail = FlashAirRequest.getBitmap(fileName);
+                        entry.put("bmp", thumbnail);
+                        if (thumbnail != null)
+                            Log.i("thumbnail", "size = (" + thumbnail.getWidth() + "," + thumbnail.getHeight() + ")");
+
                         drawIcon = new BitmapDrawable(getResources(), thumbnail);
                     }
                     if (drawIcon == null){
