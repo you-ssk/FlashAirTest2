@@ -44,7 +44,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     TextView numFilesText;
 
     //String flashairName = "192.168.0.11";
-    String flashairName = "flashair";
+    //String flashairName = "flashair";
+    String flashairName = "192.168.43.123";
 
     String rootDir = "DCIM/101NCD90";
     String directoryName = rootDir;

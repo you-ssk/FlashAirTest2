@@ -33,7 +33,8 @@ public class ImageViewActivity extends Activity {
     Bitmap downloadbitmap;
 
     //String flashairName = "192.168.0.11";
-    String flashairName = "flashair";
+    //String flashairName = "flashair";
+    String flashairName = "192.168.43.123";
 
     @Override
     protected void onCreate(Bundle savedInstanceState){
