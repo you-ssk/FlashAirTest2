@@ -61,7 +61,6 @@ public class FlashAirRequest {
             int bytesRead = 0;
             while ( (bytesRead = inputStream.read(byteChunk)) != -1){
                 byteArrayOutputStream.write(byteChunk, 0, bytesRead);
-                Log.i("getBitmap", "bytesRead = " + bytesRead);
             }
             byte[] byteArray = byteArrayOutputStream.toByteArray();
             BitmapFactory.Options bfOptions = new BitmapFactory.Options();
@@ -75,7 +74,6 @@ public class FlashAirRequest {
             Log.e("","ERROR: " + e.toString());
             e.printStackTrace();
         }
-        Log.i("getBitmap", "end");
         return resultBitmap;
     }
 }

@@ -52,9 +52,6 @@ public class ImageViewActivity extends Activity {
         String directory = extrasData.getString("directoryName");
 
         Bitmap thumbnail = extrasData.getParcelable("thumbnail");
-        if (thumbnail != null) {
-            Log.i("thumbnail", "Size =" + thumbnail.getWidth() + "x" + thumbnail.getHeight());
-        }
         viewImage(thumbnail);
         downloadFile(fileName, directory);
 
@@ -67,7 +64,6 @@ public class ImageViewActivity extends Activity {
     }
 
     void downloadFile(final String downloadFile, String directory){
-        Log.i("downloadFile", downloadFile + ":" + directory);
         final ProgressDialog waitDialog;
         waitDialog = new ProgressDialog(this);
         waitDialog.setMessage("Now downloading...");
@@ -99,9 +95,7 @@ public class ImageViewActivity extends Activity {
 
         saveButton.setOnClickListener(new View.OnClickListener(){
             @Override
-            public void onClick(View v){
-                Log.i("SaveButton", "Clicked ");
-                saveImage(downloadbitmap, filename);
+            public void onClick(View v){saveImage(downloadbitmap, filename);
             }
         });
 
@@ -121,24 +115,16 @@ public class ImageViewActivity extends Activity {
     }
 
     void saveImage(Bitmap imageBitmap, String filename){
-        Log.i("saveImage:", filename + " :: Size =" + downloadbitmap.getWidth() + "x" + downloadbitmap.getHeight());
         File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-
         File file = new File(path, "flashair" + "/" + filename);
-        Log.i("saveImage:", file.getAbsolutePath());
-
         try{
             path.mkdirs();
             OutputStream os = new FileOutputStream(file);
-            if (!imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os)) {
-                Log.e("ERROR.", "Failed to compress");
-            }
+            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os);
             os.flush();
             os.close();
         } catch (IOException e) {
-            // Unable to create file, likely because external storage is
-            // not currently mounted.
-            Log.w("ExternalStorage", "Error writing " + file, e);
+            Log.w("ERROR:", e.toString());
         }
 
         ContentValues values = new ContentValues();

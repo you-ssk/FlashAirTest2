@@ -210,7 +210,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             protected String doInBackground(String... params) {
                 String dir = params[0];
-                Log.i("INFO:", dir);
                 return FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=101&DIR=" + dir);
             }
 
@@ -243,9 +242,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     if ( (fileName.toLowerCase(Locale.getDefault()).endsWith((".jpg")))){
                         Bitmap thumbnail = FlashAirRequest.getBitmap(fileName);
                         entry.put("bmp", thumbnail);
-                        if (thumbnail != null)
-                            Log.i("thumbnail", "size = (" + thumbnail.getWidth() + "," + thumbnail.getHeight() + ")");
-
                         drawIcon = new BitmapDrawable(getResources(), thumbnail);
                     }
                     if (drawIcon == null){
