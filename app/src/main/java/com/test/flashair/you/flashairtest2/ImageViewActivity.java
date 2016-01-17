@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.AsyncTask;
@@ -18,8 +19,10 @@ import android.widget.Button;
 import android.widget.ImageView;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
@@ -34,47 +37,58 @@ public class ImageViewActivity extends Activity {
 
     //String flashairName = "192.168.0.11";
     //String flashairName = "flashair";
-    String flashairName = "192.168.43.123";
+    //String flashairName = "192.168.43.123";
+    String flashairName;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState){
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_view);
         getIntent();
-        imageView = (ImageView)findViewById(R.id.imageView1);
-        backButton = (Button)findViewById(R.id.button2);
+        imageView = (ImageView) findViewById(R.id.imageView1);
+        backButton = (Button) findViewById(R.id.button2);
         backButton.getBackground().setColorFilter(Color.rgb(65, 183, 216), PorterDuff.Mode.SRC_IN);
-        saveButton = (Button)findViewById(R.id.button3);
-        saveButton.getBackground().setColorFilter(Color.rgb(216,183,65), PorterDuff.Mode.SRC_IN);
+        saveButton = (Button) findViewById(R.id.button3);
+        saveButton.getBackground().setColorFilter(Color.rgb(216, 183, 65), PorterDuff.Mode.SRC_IN);
 
         Bundle extrasData = getIntent().getExtras();
+        flashairName = extrasData.getString("flashAirName");
         String fileName = extrasData.getString("downloadFile");
         String directory = extrasData.getString("directoryName");
+        File cacheDir = getCacheDir();
+        File file = new File(cacheDir, fileName);
+        try {
+            InputStream is = new FileInputStream(file);
+            Bitmap thumbnail = BitmapFactory.decodeStream(is);
+            viewImage(thumbnail);
+        } catch (IOException e) {
+            Log.i("IOException", e.toString());
+        }
 
-        Bitmap thumbnail = extrasData.getParcelable("thumbnail");
-        viewImage(thumbnail);
+        //Bitmap thumbnail = extrasData.getParcelable("thumbnail");
+        //viewImage(thumbnail);
         downloadFile(fileName, directory);
-
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu){
+    public boolean onCreateOptionsMenu(Menu menu) {
         //getMenuInflater().inflate(R.menu.image_view, menu);
         return true;
     }
 
-    void downloadFile(final String downloadFile, String directory){
+    void downloadFile(final String downloadFile, String directory) {
         final ProgressDialog waitDialog;
         waitDialog = new ProgressDialog(this);
         waitDialog.setMessage("Now downloading...");
         waitDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         waitDialog.show();
-        new AsyncTask<String, Void, Bitmap>(){
+        new AsyncTask<String, Void, Bitmap>() {
             @Override
-            protected Bitmap doInBackground(String... params){
+            protected Bitmap doInBackground(String... params) {
                 String fileName = params[0];
                 return FlashAirRequest.getBitmap(fileName);
             }
+
             @Override
             protected void onPostExecute(Bitmap resultBitmap) {
                 waitDialog.dismiss();
@@ -85,7 +99,7 @@ public class ImageViewActivity extends Activity {
         }.execute("http://" + flashairName + "/" + directory + "/" + downloadFile.toString());
     }
 
-    void viewImage(Bitmap imageBitmap){
+    void viewImage(Bitmap imageBitmap) {
         backButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -93,13 +107,14 @@ public class ImageViewActivity extends Activity {
             }
         });
 
-        saveButton.setOnClickListener(new View.OnClickListener(){
+        saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v){saveImage(downloadbitmap, filename);
+            public void onClick(View v) {
+                saveImage(downloadbitmap, filename);
             }
         });
 
-        if (imageBitmap == null){
+        if (imageBitmap == null) {
             imageView.setImageResource(R.drawable.ic_launcher);
         } else {
             int w = imageBitmap.getWidth();
@@ -107,17 +122,17 @@ public class ImageViewActivity extends Activity {
             double wscale = w / 2048.0;
             double hscale = h / 2048.0;
             double scale = Math.max(1.0, Math.max(wscale, hscale));
-            Bitmap scaled = Bitmap.createScaledBitmap(imageBitmap, (int)(w/scale), (int)(h/scale), false);
+            Bitmap scaled = Bitmap.createScaledBitmap(imageBitmap, (int) (w / scale), (int) (h / scale), false);
 
             imageView.setImageBitmap(scaled);
             //imageView.setImageBitmap(imageBitmap);
         }
     }
 
-    void saveImage(Bitmap imageBitmap, String filename){
+    void saveImage(Bitmap imageBitmap, String filename) {
         File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
         File file = new File(path, "flashair" + "/" + filename);
-        try{
+        try {
             path.mkdirs();
             OutputStream os = new FileOutputStream(file);
             imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, os);

@@ -23,8 +23,8 @@ public class FlashAirRequest {
         try{
             URL url = new URL(command);
 
-            //URLConnection urlCon = url.openConnection();
-            HttpURLConnection urlCon = (HttpURLConnection)url.openConnection();
+            URLConnection urlCon = url.openConnection();
+            //HttpURLConnection urlCon = (HttpURLConnection)url.openConnection();
             urlCon.connect();
             InputStream inputStream = urlCon.getInputStream();
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
@@ -50,6 +50,7 @@ public class FlashAirRequest {
 
     static public Bitmap getBitmap(String command){
         Bitmap resultBitmap = null;
+        Log.i("getBitmap", command);
         try{
             URL url = new URL(command);
             //URLConnection urlCon = url.openConnection();
@@ -61,6 +62,7 @@ public class FlashAirRequest {
             int bytesRead = 0;
             while ( (bytesRead = inputStream.read(byteChunk)) != -1){
                 byteArrayOutputStream.write(byteChunk, 0, bytesRead);
+                //Log.i("getBitmap", "read bytes = " + bytesRead);
             }
             byte[] byteArray = byteArrayOutputStream.toByteArray();
             BitmapFactory.Options bfOptions = new BitmapFactory.Options();
