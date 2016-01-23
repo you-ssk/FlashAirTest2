@@ -13,7 +13,6 @@ public class FileItem {
     int size;
     int attribute;
     GregorianCalendar date;
-    BitmapDrawable thumbnail;
 
     FileItem(String[] data){
         parse(data);
