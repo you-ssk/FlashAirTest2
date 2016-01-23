@@ -19,7 +19,7 @@ public class ImageAdapter extends BaseAdapter {
 
     public ImageAdapter(Context c) {
         mContext = c;
-        mBitmapList = new ArrayList<Bitmap>();
+        mBitmapList = new ArrayList<>();
     }
 
     public int getCount() {

@@ -55,6 +55,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     Handler updateHandler;
     boolean viewingList;
 
+    ArrayList<FileItem> fileItems;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         //requestPermissions(perms, permsRequestCode);
         setContentView(R.layout.activity_main);
         viewingList = true;
+        fileItems = new ArrayList<>();
         try {
             backButton = (Button) findViewById(R.id.button1);
             backButton.setOnClickListener(new View.OnClickListener() {
@@ -94,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                     SimpleAdapter adapter = MainActivity.this.listAdapter;
                     if (adapter != null) {
-                        ArrayList<String> filenames = new ArrayList<String>();
+                        ArrayList<String> filenames = new ArrayList<>();
                         for (int i = 0; i < adapter.getCount(); i++) {
                             Map<String, Object> item = (Map<String, Object>) adapter.getItem(i);
                             String filename = item.get("fname").toString();
@@ -104,6 +107,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         }
                         String[] fnames = filenames.toArray(new String[filenames.size()]);
                         gridViewIntent.putExtra("filenames", fnames);
+                        gridViewIntent.putExtra("FlashAirName", flashairName);
+                        gridViewIntent.putExtra("DirectoryName", directoryName);
                     }
                     MainActivity.this.startActivity(gridViewIntent);
                 }
@@ -231,7 +236,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         new AsyncTask<String, Void, ListAdapter>() {
             @Override
             protected ListAdapter doInBackground(String... params) {
-                ArrayList<FileItem> fileItems = new ArrayList<FileItem>();
+                //ArrayList<FileItem> fileItems = new ArrayList<>();
+                fileItems.clear();
                 {
                     String dir = params[0];
                     String files = FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=100&DIR=" + dir);
@@ -243,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     }
                 }
 
-                ArrayList<Map<String, Object>> data = new ArrayList<Map<String, Object>>();
+                ArrayList<Map<String, Object>> data = new ArrayList<>();
 
                 for (FileItem item : fileItems) {
                     String filename = item.filename;
