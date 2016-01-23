@@ -4,14 +4,11 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Parcelable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -45,7 +42,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     TextView currentDirText;
     TextView numFilesText;
 
-    String flashairName = "192.168.0.11";
+    String flashairName = "192.168.0.13";
     //String flashairName = "flashair";
     //String flashairName = "192.168.43.123";
 
@@ -250,6 +247,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 for (FileItem item : fileItems) {
                     String filename = item.filename;
+                    if (FileItem.isRaw(filename)) {
+                        continue;
+                    }
                     String command = "http://" + flashairName + "/thumbnail.cgi?" + directoryName + "/" + filename;
                     Map<String, Object> entry = new HashMap<String, Object>();
                     BitmapDrawable drawIcon = null;
@@ -267,14 +267,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                 Log.i("IOException", e.toString());
                             }
                         }
-                        drawIcon = new BitmapDrawable(getResources(), thumbnail);
-                        item.setThumbnail(drawIcon);
                     }
-                    if (drawIcon == null) {
-                        entry.put("thmb", R.drawable.ic_launcher);
-                    } else {
-                        entry.put("thmb", drawIcon);
-                    }
+                    entry.put("filename", filename);
                     entry.put("fname", filename);
                     data.add(entry);
                 }
@@ -282,7 +276,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         MainActivity.this,
                         data,
                         android.R.layout.activity_list_item,
-                        new String[]{"thmb", "fname"},
+                        new String[]{"filename", "fname"},
                         new int[]{android.R.id.icon, android.R.id.text1});
                 listAdapter.setViewBinder(new CustomViewBinder());
                 return listAdapter;
@@ -304,30 +298,26 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         @Override
         public boolean setViewValue(View view, Object data, String textRepresentation) {
             if (view instanceof ImageView) {
-                if (data instanceof String){
+                if (view.getId() == android.R.id.icon){
                     ImageView imageView = (ImageView) view;
                     String filename = (String)data;
-                    Log.i("CustomViewBinder", filename);
-                    try {
-                        File file = new File(getCacheDir(), filename);
-                        InputStream is = new FileInputStream(file);
-                        Bitmap thumbnail = BitmapFactory.decodeStream(is);
-                        if (thumbnail != null) {
-                            Log.i("CustomViewBinder", "setImageBitmap" + filename);
-                            imageView.setImageBitmap(thumbnail);
+                    if (FileItem.isJpeg(filename)){
+                        try {
+                            File file = new File(getCacheDir(), filename);
+                            InputStream is = new FileInputStream(file);
+                            Bitmap thumbnail = BitmapFactory.decodeStream(is);
+                            if (thumbnail != null) {
+                                imageView.setImageBitmap(thumbnail);
+                            } else {
+                                imageView.setImageResource(R.drawable.ic_launcher);
+                            }
+                        } catch (IOException e){
+                            Log.i("IOException", e.toString());
+                            imageView.setImageResource(R.drawable.ic_launcher);
                         }
-                    } catch (IOException e){
-                        Log.i("IOException", e.toString());
                     }
                     return true;
                 }
-                if (data instanceof Drawable){
-                    ImageView imageView = (ImageView) view;
-                    BitmapDrawable thumbnail = (BitmapDrawable) data;
-                    //imageView.setImageDrawable(thumbnail);
-                    return true;
-                }
-
             }
             return false;
         }

@@ -3,7 +3,6 @@ package com.test.flashair.you.flashairtest2;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.hardware.display.DisplayManager;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -39,7 +38,6 @@ public class GridViewActivity extends Activity {
         int maxWidth = 0;
         for (String filename: filenames){
             File file = new File(cachePath, filename);
-            Log.i("READ File", file.getAbsolutePath());
             try {
                 InputStream is = new FileInputStream(file);
                 Bitmap thumbnail = BitmapFactory.decodeStream(is);

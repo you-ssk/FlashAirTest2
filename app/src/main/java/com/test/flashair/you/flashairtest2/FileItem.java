@@ -1,10 +1,6 @@
 package com.test.flashair.you.flashairtest2;
 
 import android.graphics.drawable.BitmapDrawable;
-
-import java.text.DateFormat;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 
@@ -43,11 +39,11 @@ public class FileItem {
         date = new GregorianCalendar(year,month,day,hour,min,sec);
     }
 
-    void setThumbnail(BitmapDrawable thmb){
-        thumbnail = thmb;
-    }
-
     static public boolean isJpeg(String filename){
         return filename.toLowerCase(Locale.getDefault()).endsWith(".jpg");
     }
+    static public boolean isRaw(String filename){
+        return filename.toLowerCase(Locale.getDefault()).endsWith(".nef");
+    }
+
 }

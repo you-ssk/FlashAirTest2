@@ -17,35 +17,36 @@ public class ImageAdapter extends BaseAdapter {
 
     private ArrayList<Bitmap> mBitmapList;
 
-    public ImageAdapter(Context c){
+    public ImageAdapter(Context c) {
         mContext = c;
         mBitmapList = new ArrayList<Bitmap>();
     }
-    public int getCount(){
-        return mBitmapList.size() ;
+
+    public int getCount() {
+        return mBitmapList.size();
     }
 
-    public Object getItem(int position){
+    public Object getItem(int position) {
         return null;
     }
-    public long getItemId(int position){
+
+    public long getItemId(int position) {
         return 0;
     }
 
-    public void addBitmap(Bitmap bm){
+    public void addBitmap(Bitmap bm) {
         mBitmapList.add(bm);
 
     }
-    public View getView(int position, View convertView, ViewGroup parent){
+
+    public View getView(int position, View convertView, ViewGroup parent) {
         ImageView imageView;
-        if (convertView == null){
+        if (convertView == null) {
             imageView = new ImageView(mContext);
         } else {
             imageView = (ImageView) convertView;
         }
-        //Bitmap bm;
         imageView.setImageBitmap(mBitmapList.get(position));
-        //imageView.setImageResource(R.drawable.ic_launcher);
         return imageView;
     }
 }

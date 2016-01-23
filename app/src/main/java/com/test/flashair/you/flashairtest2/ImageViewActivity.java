@@ -33,12 +33,9 @@ public class ImageViewActivity extends Activity {
     Button backButton;
     Button saveButton;
     String filename;
-    Bitmap downloadbitmap;
+    Bitmap downloadBitmap;
 
-    //String flashairName = "192.168.0.11";
-    //String flashairName = "flashair";
-    //String flashairName = "192.168.43.123";
-    String flashairName;
+    String flashAirName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +49,7 @@ public class ImageViewActivity extends Activity {
         saveButton.getBackground().setColorFilter(Color.rgb(216, 183, 65), PorterDuff.Mode.SRC_IN);
 
         Bundle extrasData = getIntent().getExtras();
-        flashairName = extrasData.getString("flashAirName");
+        flashAirName = extrasData.getString("flashAirName");
         String fileName = extrasData.getString("downloadFile");
         String directory = extrasData.getString("directoryName");
         File cacheDir = getCacheDir();
@@ -64,9 +61,6 @@ public class ImageViewActivity extends Activity {
         } catch (IOException e) {
             Log.i("IOException", e.toString());
         }
-
-        //Bitmap thumbnail = extrasData.getParcelable("thumbnail");
-        //viewImage(thumbnail);
         downloadFile(fileName, directory);
     }
 
@@ -94,9 +88,9 @@ public class ImageViewActivity extends Activity {
                 waitDialog.dismiss();
                 viewImage(resultBitmap);
                 filename = downloadFile;
-                downloadbitmap = resultBitmap;
+                downloadBitmap = resultBitmap;
             }
-        }.execute("http://" + flashairName + "/" + directory + "/" + downloadFile.toString());
+        }.execute("http://" + flashAirName + "/" + directory + "/" + downloadFile.toString());
     }
 
     void viewImage(Bitmap imageBitmap) {
@@ -110,7 +104,7 @@ public class ImageViewActivity extends Activity {
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                saveImage(downloadbitmap, filename);
+                saveImage(downloadBitmap, filename);
             }
         });
 
@@ -119,13 +113,12 @@ public class ImageViewActivity extends Activity {
         } else {
             int w = imageBitmap.getWidth();
             int h = imageBitmap.getHeight();
-            double wscale = w / 2048.0;
-            double hscale = h / 2048.0;
-            double scale = Math.max(1.0, Math.max(wscale, hscale));
+            double wScale = w / 2048.0;
+            double hScale = h / 2048.0;
+            double scale = Math.max(1.0, Math.max(wScale, hScale));
             Bitmap scaled = Bitmap.createScaledBitmap(imageBitmap, (int) (w / scale), (int) (h / scale), false);
 
             imageView.setImageBitmap(scaled);
-            //imageView.setImageBitmap(imageBitmap);
         }
     }
 
@@ -139,7 +132,7 @@ public class ImageViewActivity extends Activity {
             os.flush();
             os.close();
         } catch (IOException e) {
-            Log.w("ERROR:", e.toString());
+            Log.e("ERROR:", e.toString());
         }
 
         ContentValues values = new ContentValues();
