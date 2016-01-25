@@ -1,7 +1,5 @@
 package com.test.flashair.you.flashairtest2;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -22,19 +20,18 @@ public class FlashAirRequest {
         String result = "";
         try {
             URL url = new URL(command);
-
             URLConnection urlCon = url.openConnection();
             urlCon.connect();
             InputStream inputStream = urlCon.getInputStream();
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
-            StringBuffer strbuf = new StringBuffer();
+            StringBuffer strBuf = new StringBuffer();
             String str;
             while ((str = bufferedReader.readLine()) != null) {
-                if (strbuf.toString() != "")
-                    strbuf.append("\n");
-                strbuf.append(str);
+                if (strBuf.toString() != "")
+                    strBuf.append("\n");
+                strBuf.append(str);
             }
-            result = strbuf.toString();
+            result = strBuf.toString();
         } catch (MalformedURLException e) {
             Log.e("ERROR", "ERROR: " + e.toString());
             e.printStackTrace();
@@ -47,8 +44,8 @@ public class FlashAirRequest {
         return result;
     }
 
-    static public Bitmap getBitmap(String command) {
-        Bitmap resultBitmap = null;
+    static public byte[] getBitmapByteArray(String command) {
+        byte[] byteArray = null;
         try {
             URL url = new URL(command);
             HttpURLConnection urlCon = (HttpURLConnection) url.openConnection();
@@ -60,11 +57,9 @@ public class FlashAirRequest {
             while ((bytesRead = inputStream.read(byteChunk)) != -1) {
                 byteArrayOutputStream.write(byteChunk, 0, bytesRead);
             }
-            byte[] byteArray = byteArrayOutputStream.toByteArray();
-            BitmapFactory.Options bfOptions = new BitmapFactory.Options();
-            resultBitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length, bfOptions);
-            byteArrayOutputStream.close();
             inputStream.close();
+            byteArray = byteArrayOutputStream.toByteArray();
+            byteArrayOutputStream.close();
         } catch (MalformedURLException e) {
             Log.e("", "ERROR: " + e.toString());
             e.printStackTrace();
@@ -72,6 +67,6 @@ public class FlashAirRequest {
             Log.e("", "ERROR: " + e.toString());
             e.printStackTrace();
         }
-        return resultBitmap;
+        return byteArray;
     }
 }

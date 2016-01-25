@@ -36,7 +36,6 @@ public class ImageAdapter extends BaseAdapter {
 
     public void addBitmap(Bitmap bm) {
         mBitmapList.add(bm);
-
     }
 
     public View getView(int position, View convertView, ViewGroup parent) {

@@ -30,9 +30,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
 
@@ -42,7 +45,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     TextView currentDirText;
     TextView numFilesText;
 
-    String flashairName = "192.168.0.13";
+    String flashairName = "192.168.0.2";
     //String flashairName = "flashair";
     //String flashairName = "192.168.43.123";
 
@@ -55,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     Handler updateHandler;
     boolean viewingList;
 
-    ArrayList<FileItem> fileItems;
+    TreeMap<String, FileItem> imageItems;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,7 +74,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         //requestPermissions(perms, permsRequestCode);
         setContentView(R.layout.activity_main);
         viewingList = true;
-        fileItems = new ArrayList<>();
+        imageItems = FileItem.createMap();
+
         try {
             backButton = (Button) findViewById(R.id.button1);
             backButton.setOnClickListener(new View.OnClickListener() {
@@ -109,6 +113,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         gridViewIntent.putExtra("filenames", fnames);
                         gridViewIntent.putExtra("FlashAirName", flashairName);
                         gridViewIntent.putExtra("DirectoryName", directoryName);
+                        gridViewIntent.putExtra("ImageItems", imageItems);
                     }
                     MainActivity.this.startActivity(gridViewIntent);
                 }
@@ -199,6 +204,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 viewImageIntent.putExtra("flashAirName", flashairName);
                 viewImageIntent.putExtra("downloadFile", downloadFile.toString());
                 viewImageIntent.putExtra("directoryName", directoryName);
+                viewImageIntent.putExtra("ImageItem", imageItems.get(downloadFile.toString()));
                 MainActivity.this.startActivity(viewImageIntent);
             }
         }
@@ -236,41 +242,30 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         new AsyncTask<String, Void, ListAdapter>() {
             @Override
             protected ListAdapter doInBackground(String... params) {
-                //ArrayList<FileItem> fileItems = new ArrayList<>();
-                fileItems.clear();
-                {
-                    String dir = params[0];
-                    String files = FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=100&DIR=" + dir);
-                    String[] allFiles = files.split("([,\n])");
-                    for (int i = 1; i < allFiles.length; i = i + 6) {
-                        String[] elem = Arrays.copyOfRange(allFiles, i, i + 6);
-                        FileItem item = new FileItem(elem);
-                        fileItems.add(item);
-                    }
-                }
+                String dir = params[0];
+                String files = FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=100&DIR=" + dir);
+                FileItem.parse(imageItems, files);
 
                 ArrayList<Map<String, Object>> data = new ArrayList<>();
 
-                for (FileItem item : fileItems) {
+                for (FileItem item : imageItems.values()) {
                     String filename = item.filename;
                     if (FileItem.isRaw(filename)) {
                         continue;
                     }
                     String command = "http://" + flashairName + "/thumbnail.cgi?" + directoryName + "/" + filename;
-                    Map<String, Object> entry = new HashMap<String, Object>();
-                    BitmapDrawable drawIcon = null;
+                    Map<String, Object> entry = new HashMap<>();
 
                     if (FileItem.isJpeg(filename)) {
-                        Bitmap thumbnail = FlashAirRequest.getBitmap(command);
+                        byte[] thumbnail = FlashAirRequest.getBitmapByteArray(command);
                         if (thumbnail != null) {
                             File file = new File(getCacheDir(), filename);
                             try {
                                 OutputStream os = new FileOutputStream(file);
-                                thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, os);
+                                os.write(thumbnail);
                                 os.close();
-                                Log.i("INFO put file", file.getAbsolutePath());
                             } catch (IOException e) {
-                                Log.i("IOException", e.toString());
+                                Log.i("Exception", e.toString());
                             }
                         }
                     }
@@ -304,10 +299,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         @Override
         public boolean setViewValue(View view, Object data, String textRepresentation) {
             if (view instanceof ImageView) {
-                if (view.getId() == android.R.id.icon){
+                if (view.getId() == android.R.id.icon) {
                     ImageView imageView = (ImageView) view;
-                    String filename = (String)data;
-                    if (FileItem.isJpeg(filename)){
+                    String filename = (String) data;
+                    if (FileItem.isJpeg(filename)) {
                         try {
                             File file = new File(getCacheDir(), filename);
                             InputStream is = new FileInputStream(file);
@@ -317,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             } else {
                                 imageView.setImageResource(R.drawable.ic_launcher);
                             }
-                        } catch (IOException e){
+                        } catch (IOException e) {
                             Log.i("IOException", e.toString());
                             imageView.setImageResource(R.drawable.ic_launcher);
                         }
