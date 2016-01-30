@@ -1,26 +1,32 @@
 package com.test.flashair.you.flashairtest2;
 
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.Patterns;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.support.v7.widget.Toolbar;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,15 +35,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
+public class MainActivity
+        extends AppCompatActivity
+        implements AdapterView.OnItemClickListener {
 
     ListView listView;
     Button backButton;
@@ -45,21 +49,25 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     TextView currentDirText;
     TextView numFilesText;
 
-    String flashairName = "192.168.0.2";
-    //String flashairName = "flashair";
-    //String flashairName = "192.168.43.123";
+
+    String flashAirName;
+    String defaultFlashAirName = "192.168.0.255";
 
     //String rootDir = "DCIM/101NCD90";
     String rootDir = "DCIM";
+    String defaultRootDir = "DCIM";
     String directoryName = rootDir;
 
     SimpleAdapter listAdapter;
     int checkInterval = 5000;
     Handler updateHandler;
     boolean viewingList;
+    SharedPreferences.OnSharedPreferenceChangeListener prefListener;
 
     TreeMap<String, FileItem> imageItems;
 
+    private static final String PREF_KEY_FLASHAIR_NAME = "FlashAirName";
+    private static final String PREF_KEY_ROOT_DIR = "RootDir";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -73,8 +81,35 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         int permsRequestCode = 200;
         //requestPermissions(perms, permsRequestCode);
         setContentView(R.layout.activity_main);
+        Toolbar main_toolbar = (Toolbar) findViewById(R.id.main_toolbar);
+        setSupportActionBar(main_toolbar);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+                if (key == PREF_KEY_ROOT_DIR) {
+                    String changed = sharedPreferences.getString(key, defaultRootDir);
+                    rootDir = changed;
+                    listRootDirectory();
+                } else if (key == PREF_KEY_FLASHAIR_NAME) {
+                    String changed = sharedPreferences.getString(key, defaultFlashAirName);
+                    flashAirName = changed;
+                    listRootDirectory();
+                }
+            }
+        };
+        prefs.registerOnSharedPreferenceChangeListener(prefListener);
+        flashAirName = prefs.getString(PREF_KEY_FLASHAIR_NAME, defaultFlashAirName);
+        rootDir = prefs.getString(PREF_KEY_ROOT_DIR, defaultRootDir);
+
+        Log.i("FlashAirName = ", flashAirName);
+        Log.i("RootDir = ", rootDir);
+
         viewingList = true;
         imageItems = FileItem.createMap();
+
+        boolean b = Patterns.IP_ADDRESS.matcher(flashAirName).matches();
 
         try {
             backButton = (Button) findViewById(R.id.button1);
@@ -111,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         }
                         String[] fnames = filenames.toArray(new String[filenames.size()]);
                         gridViewIntent.putExtra("filenames", fnames);
-                        gridViewIntent.putExtra("FlashAirName", flashairName);
+                        gridViewIntent.putExtra("FlashAirName", flashAirName);
                         gridViewIntent.putExtra("DirectoryName", directoryName);
                         gridViewIntent.putExtra("ImageItems", imageItems);
                     }
@@ -124,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             e.printStackTrace();
         }
         updateHandler = new Handler();
+
         startUpdate();
     }
 
@@ -160,7 +196,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             listDirectory(directoryName);
                         }
                     }
-                }.execute("http://" + flashairName + "/command.cgi?op=102");
+                }.execute("http://" + flashAirName + "/command.cgi?op=102");
             }
             updateHandler.postDelayed(statusChecker, checkInterval);
         }
@@ -176,13 +212,31 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            final View dialogView = getLayoutInflater().inflate(R.layout.address_dialog, null);
+            final EditText address = (EditText) dialogView.findViewById(R.id.editAddress);
+            final EditText root = (EditText) dialogView.findViewById(R.id.rootDir);
+            final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            address.setText(prefs.getString(PREF_KEY_FLASHAIR_NAME, ""));
+            root.setText(prefs.getString(PREF_KEY_ROOT_DIR, ""));
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Setting")
+                    .setView(dialogView)
+                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String a = address.getText().toString();
+                            String r = root.getText().toString();
+                            prefs.edit()
+                                    .putString(PREF_KEY_FLASHAIR_NAME, a)
+                                    .putString(PREF_KEY_ROOT_DIR, r)
+                                    .apply();
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
             return true;
         }
 
@@ -201,7 +255,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 listDirectory(directoryName);
             } else if (FileItem.isJpeg(downloadFile.toString())) {
                 Intent viewImageIntent = new Intent(this, ImageViewActivity.class);
-                viewImageIntent.putExtra("flashAirName", flashairName);
+                viewImageIntent.putExtra("flashAirName", flashAirName);
                 viewImageIntent.putExtra("downloadFile", downloadFile.toString());
                 viewImageIntent.putExtra("directoryName", directoryName);
                 viewImageIntent.putExtra("ImageItem", imageItems.get(downloadFile.toString()));
@@ -230,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             protected String doInBackground(String... params) {
                 String dir = params[0];
-                return FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=101&DIR=" + dir);
+                return FlashAirRequest.getString("http://" + flashAirName + "/command.cgi?op=101&DIR=" + dir);
             }
 
             @Override
@@ -243,7 +297,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             protected ListAdapter doInBackground(String... params) {
                 String dir = params[0];
-                String files = FlashAirRequest.getString("http://" + flashairName + "/command.cgi?op=100&DIR=" + dir);
+                String files = FlashAirRequest.getString("http://" + flashAirName + "/command.cgi?op=100&DIR=" + dir);
                 FileItem.parse(imageItems, files);
 
                 ArrayList<Map<String, Object>> data = new ArrayList<>();
@@ -253,7 +307,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     if (FileItem.isRaw(filename)) {
                         continue;
                     }
-                    String command = "http://" + flashairName + "/thumbnail.cgi?" + directoryName + "/" + filename;
+                    String command = "http://" + flashAirName + "/thumbnail.cgi?" + directoryName + "/" + filename;
                     Map<String, Object> entry = new HashMap<>();
 
                     if (FileItem.isJpeg(filename)) {
