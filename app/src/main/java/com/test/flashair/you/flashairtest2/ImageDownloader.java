@@ -18,13 +18,15 @@ public class ImageDownloader extends AsyncTask<String, Integer, byte[]> {
     public interface ImageDownloadCompleted {
         void onCompleted(byte[] byteArray);
     }
+
     ProgressDialog progress;
     ImageDownloadCompleted listener;
 
-    public ImageDownloader(ProgressDialog _progress, ImageDownloadCompleted _listener){
+    public ImageDownloader(ProgressDialog _progress, ImageDownloadCompleted _listener) {
         progress = _progress;
         listener = _listener;
     }
+
     @Override
     protected byte[] doInBackground(String... params) {
         String command = params[0];
@@ -36,7 +38,7 @@ public class ImageDownloader extends AsyncTask<String, Integer, byte[]> {
             InputStream inputStream = urlCon.getInputStream();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             byte[] byteChunk = new byte[2048];
-            int bytesRead = 0;
+            int bytesRead;
             while ((bytesRead = inputStream.read(byteChunk)) != -1) {
                 byteArrayOutputStream.write(byteChunk, 0, bytesRead);
                 publishProgress(byteArrayOutputStream.size());
@@ -60,7 +62,7 @@ public class ImageDownloader extends AsyncTask<String, Integer, byte[]> {
         listener.onCompleted(byteArray);
     }
 
-    protected void onProgressUpdate(Integer... _progress){
+    protected void onProgressUpdate(Integer... _progress) {
         progress.setProgress(_progress[0]);
     }
 }

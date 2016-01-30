@@ -62,7 +62,7 @@ public class FileItem implements Serializable {
         }
     }
 
-    static public TreeMap<String, FileItem> createMap(){
+    static public TreeMap<String, FileItem> createMap() {
         Comparator<String> fileItemComparator = new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {

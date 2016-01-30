@@ -64,6 +64,7 @@ public class MainActivity
 
     private static final String PREF_KEY_FLASH_AIR_NAME = "FlashAirName";
     private static final String PREF_KEY_ROOT_DIR = "RootDir";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -84,13 +85,11 @@ public class MainActivity
         prefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
             @Override
             public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                if (key == PREF_KEY_ROOT_DIR) {
-                    String changed = sharedPreferences.getString(key, defaultRootDir);
-                    rootDir = changed;
+                if (key.equals(PREF_KEY_ROOT_DIR)) {
+                    rootDir = sharedPreferences.getString(key, defaultRootDir);
                     listRootDirectory();
-                } else if (key == PREF_KEY_FLASH_AIR_NAME) {
-                    String changed = sharedPreferences.getString(key, defaultFlashAirName);
-                    flashAirName = changed;
+                } else if (key.equals(PREF_KEY_FLASH_AIR_NAME)) {
+                    flashAirName = sharedPreferences.getString(key, defaultFlashAirName);
                     listRootDirectory();
                 }
             }
@@ -262,6 +261,7 @@ public class MainActivity
                 String dir = params[0];
                 return FlashAirRequest.getString("http://" + flashAirName + "/command.cgi?op=101&DIR=" + dir);
             }
+
             @Override
             protected void onPostExecute(String fileCount) {
                 numFilesText.setText("Items Found: " + fileCount);
