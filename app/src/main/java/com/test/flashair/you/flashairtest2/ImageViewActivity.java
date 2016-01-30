@@ -28,7 +28,6 @@ import java.io.OutputStream;
 public class ImageViewActivity extends Activity {
     String flashAirName;
     ImageView imageView;
-    Button backButton;
     Button saveButton;
     Button downButton;
 
@@ -73,19 +72,10 @@ public class ImageViewActivity extends Activity {
     }
 
     void setupButton() {
-        backButton = (Button) findViewById(R.id.button2);
-        backButton.getBackground().setColorFilter(Color.rgb(65, 183, 216), PorterDuff.Mode.SRC_IN);
         saveButton = (Button) findViewById(R.id.button3);
         saveButton.getBackground().setColorFilter(Color.rgb(216, 183, 65), PorterDuff.Mode.SRC_IN);
         downButton = (Button) findViewById(R.id.button4);
         downButton.getBackground().setColorFilter(Color.rgb(65, 216, 183), PorterDuff.Mode.SRC_IN);
-
-        backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ImageViewActivity.this.finish();
-            }
-        });
 
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override

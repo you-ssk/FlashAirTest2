@@ -44,29 +44,25 @@ public class MainActivity
         implements AdapterView.OnItemClickListener {
 
     ListView listView;
-    Button backButton;
     Button gridButton;
     TextView currentDirText;
     TextView numFilesText;
 
-
     String flashAirName;
     String defaultFlashAirName = "192.168.0.255";
+    String rootDir = "DCIM/101NCD90";
+    String defaultRootDir = "DCIM/101NCD90";
 
-    //String rootDir = "DCIM/101NCD90";
-    String rootDir = "DCIM";
-    String defaultRootDir = "DCIM";
     String directoryName = rootDir;
-
     SimpleAdapter listAdapter;
+
     int checkInterval = 5000;
     Handler updateHandler;
     boolean viewingList;
     SharedPreferences.OnSharedPreferenceChangeListener prefListener;
-
     TreeMap<String, FileItem> imageItems;
 
-    private static final String PREF_KEY_FLASHAIR_NAME = "FlashAirName";
+    private static final String PREF_KEY_FLASH_AIR_NAME = "FlashAirName";
     private static final String PREF_KEY_ROOT_DIR = "RootDir";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,7 +88,7 @@ public class MainActivity
                     String changed = sharedPreferences.getString(key, defaultRootDir);
                     rootDir = changed;
                     listRootDirectory();
-                } else if (key == PREF_KEY_FLASHAIR_NAME) {
+                } else if (key == PREF_KEY_FLASH_AIR_NAME) {
                     String changed = sharedPreferences.getString(key, defaultFlashAirName);
                     flashAirName = changed;
                     listRootDirectory();
@@ -100,7 +96,7 @@ public class MainActivity
             }
         };
         prefs.registerOnSharedPreferenceChangeListener(prefListener);
-        flashAirName = prefs.getString(PREF_KEY_FLASHAIR_NAME, defaultFlashAirName);
+        flashAirName = prefs.getString(PREF_KEY_FLASH_AIR_NAME, defaultFlashAirName);
         rootDir = prefs.getString(PREF_KEY_ROOT_DIR, defaultRootDir);
 
         Log.i("FlashAirName = ", flashAirName);
@@ -112,21 +108,6 @@ public class MainActivity
         boolean b = Patterns.IP_ADDRESS.matcher(flashAirName).matches();
 
         try {
-            backButton = (Button) findViewById(R.id.button1);
-            backButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (directoryName.equals(rootDir)) {
-                        listRootDirectory();
-                    } else {
-                        int index = directoryName.lastIndexOf("/");
-                        directoryName = directoryName.substring(0, index);
-                        listDirectory(directoryName);
-                    }
-                }
-            });
-            backButton.setEnabled(false);
-
             gridButton = (Button) findViewById(R.id.button_grid);
             gridButton.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -218,7 +199,7 @@ public class MainActivity
             final EditText address = (EditText) dialogView.findViewById(R.id.editAddress);
             final EditText root = (EditText) dialogView.findViewById(R.id.rootDir);
             final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            address.setText(prefs.getString(PREF_KEY_FLASHAIR_NAME, ""));
+            address.setText(prefs.getString(PREF_KEY_FLASH_AIR_NAME, ""));
             root.setText(prefs.getString(PREF_KEY_ROOT_DIR, ""));
 
             new AlertDialog.Builder(this)
@@ -230,7 +211,7 @@ public class MainActivity
                             String a = address.getText().toString();
                             String r = root.getText().toString();
                             prefs.edit()
-                                    .putString(PREF_KEY_FLASHAIR_NAME, a)
+                                    .putString(PREF_KEY_FLASH_AIR_NAME, a)
                                     .putString(PREF_KEY_ROOT_DIR, r)
                                     .apply();
                         }
@@ -270,11 +251,6 @@ public class MainActivity
     }
 
     public void listDirectory(String dir) {
-        if (dir.equals(rootDir)) {
-            backButton.setEnabled(false);
-        } else {
-            backButton.setEnabled(true);
-        }
         currentDirText = (TextView) findViewById(R.id.textView1);
         currentDirText.setText(dir + "/");
         dir = "/" + dir;
@@ -286,7 +262,6 @@ public class MainActivity
                 String dir = params[0];
                 return FlashAirRequest.getString("http://" + flashAirName + "/command.cgi?op=101&DIR=" + dir);
             }
-
             @Override
             protected void onPostExecute(String fileCount) {
                 numFilesText.setText("Items Found: " + fileCount);
