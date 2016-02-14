@@ -111,7 +111,6 @@ public class MainActivity
             gridButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Log.i("onClick", "GridButton");
                     Intent gridViewIntent = new Intent(MainActivity.this, GridViewActivity.class);
 
                     SimpleAdapter adapter = MainActivity.this.listAdapter;
@@ -279,16 +278,15 @@ public class MainActivity
 
                 for (FileItem item : imageItems.values()) {
                     String filename = item.filename;
-                    if (FileItem.isRaw(filename)) {
+                    if (!FileItem.isJpeg(filename)) {
                         continue;
                     }
-                    String command = "http://" + flashAirName + "/thumbnail.cgi?" + directoryName + "/" + filename;
+                    File file = new File(getCacheDir(), filename);
                     Map<String, Object> entry = new HashMap<>();
-
-                    if (FileItem.isJpeg(filename)) {
+                    if (!file.exists()) {
+                        String command = "http://" + flashAirName + "/thumbnail.cgi?" + directoryName + "/" + filename;
                         byte[] thumbnail = FlashAirRequest.getBitmapByteArray(command);
                         if (thumbnail != null) {
-                            File file = new File(getCacheDir(), filename);
                             try {
                                 OutputStream os = new FileOutputStream(file);
                                 os.write(thumbnail);

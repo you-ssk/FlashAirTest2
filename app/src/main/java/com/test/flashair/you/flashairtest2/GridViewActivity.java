@@ -48,7 +48,9 @@ public class GridViewActivity extends Activity {
         HashMap<String, FileItem> hashMap = (HashMap<String, FileItem>) (s);
         imageItems = FileItem.createMap();
         for (String filename : hashMap.keySet()) {
-            imageItems.put(filename, hashMap.get(filename));
+            if (FileItem.isJpeg(filename)) {
+                imageItems.put(filename, hashMap.get(filename));
+            }
         }
 
         setThumbnails(gridView, filenames);
@@ -57,8 +59,6 @@ public class GridViewActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 String filename = fileNames.get(position);
-
-                Log.i("GridView item clicked.", "position = " + position + ". id = " + id + ".filename = " + filename);
                 if (FileItem.isJpeg(filename)) {
                     Intent viewImageIntent = new Intent(getApplicationContext(), ImageViewActivity.class);
                     viewImageIntent.putExtra("flashAirName", flashAirName);
@@ -80,7 +80,8 @@ public class GridViewActivity extends Activity {
             try {
                 InputStream is = new FileInputStream(file);
                 Bitmap thumbnail = BitmapFactory.decodeStream(is);
-                thumbnail = Bitmap.createScaledBitmap(thumbnail, thumbnail.getWidth() * 3, thumbnail.getHeight() * 3, false);
+                double thumbnailScale = 2.3;
+                thumbnail = Bitmap.createScaledBitmap(thumbnail, (int)(thumbnail.getWidth() * thumbnailScale), (int)(thumbnail.getHeight() * thumbnailScale), false);
                 if (thumbnail != null) {
                     maxWidth = Math.max(thumbnail.getWidth(), maxWidth);
                     imageAdapter.addBitmap(thumbnail);

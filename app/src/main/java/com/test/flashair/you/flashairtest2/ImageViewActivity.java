@@ -6,14 +6,19 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.BitmapRegionDecoder;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.util.Size;
 import android.view.Menu;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageView;
 
@@ -36,6 +41,9 @@ public class ImageViewActivity extends Activity {
     FileItem item;
     byte[] downloadBitmapByteArray;
 
+    double zoomFactors[] = {1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0};
+    int zoomIndex = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,11 +55,29 @@ public class ImageViewActivity extends Activity {
         filename = extrasData.getString("downloadFile");
         directory = extrasData.getString("directoryName");
         item = (FileItem) extrasData.getSerializable("ImageItem");
-        Log.i("ImageItem", item.filename + ";" + item.size + ":" + item.date.toString());
+
         setupButton();
         File cacheDir = getCacheDir();
         File file = new File(cacheDir, filename);
         viewThumbnail(file);
+
+        imageView.setOnClickListener(new AdapterView.OnClickListener() {
+            @Override
+            public void onClick(View view){
+                if (downloadBitmapByteArray == null)
+                    return;
+
+                zoomIndex += 1;
+                double zoomFactor = zoomFactors[zoomIndex % zoomFactors.length];
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inJustDecodeBounds = true;
+                BitmapFactory.decodeByteArray(downloadBitmapByteArray, 0, downloadBitmapByteArray.length, opts);
+                Size orgSize = new Size(opts.outWidth, opts.outHeight);
+                Point pos = new Point(orgSize.getWidth() / 2, orgSize.getHeight() / 2);
+                Bitmap bitmap = getBitmap(downloadBitmapByteArray, pos, zoomFactor);
+                imageView.setImageBitmap(bitmap);
+            }
+        });
     }
 
     @Override
@@ -108,12 +134,44 @@ public class ImageViewActivity extends Activity {
         }
     }
 
+    void viewImageRegion(final byte[] bitmapByteArray) {
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.length, opts);
+        Size orgSize = new Size(opts.outWidth, opts.outHeight);
+        Point pos = new Point(orgSize.getWidth() / 2, orgSize.getHeight() / 2);
+        Bitmap bitmap = getBitmap(bitmapByteArray, pos, 1.0);
+        imageView.setImageBitmap(bitmap);
+        downloadBitmapByteArray = bitmapByteArray;
+    }
+
+    Bitmap getBitmap(final byte[] bitmapByteArray, Point pos, double zoomFactor) {
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.length, opts);
+
+        Rect rect;
+        BitmapFactory.Options regionOpts = new BitmapFactory.Options();
+        {
+            int preferredWidth = (int) (opts.outWidth / zoomFactor);
+            int preferredHeight = (int) (opts.outHeight / zoomFactor);
+            rect = new Rect(pos.x - preferredWidth / 2, pos.y - preferredHeight / 2, preferredWidth, preferredHeight);
+            regionOpts.inSampleSize = Math.max(preferredWidth / imageView.getWidth(), preferredHeight / imageView.getHeight());
+        }
+        try {
+            BitmapRegionDecoder regionDecoder = BitmapRegionDecoder.newInstance(bitmapByteArray, 0, bitmapByteArray.length, true);
+            return regionDecoder.decodeRegion(rect, regionOpts);
+        } catch (IOException e) {
+            Log.e("IOException", e.toString());
+        }
+        return null;
+    }
+
     void saveImage(byte[] bitmapByteArray, String filename) {
         String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString() + "/flashair";
         File dir = new File(path);
         if (!dir.exists()) {
             boolean r = dir.mkdirs();
-            Log.i("DIR.", dir.toString() + "mkdirs = " + r);
         }
         File file = new File(path, filename);
         try {
@@ -134,9 +192,11 @@ public class ImageViewActivity extends Activity {
         cr.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
     }
 
+
     private ImageDownloader.ImageDownloadCompleted listener = new ImageDownloader.ImageDownloadCompleted() {
         public void onCompleted(byte[] byteArray) {
-            viewImage(byteArray);
+            //viewImage(byteArray);
+            viewImageRegion(byteArray);
         }
     };
 }
