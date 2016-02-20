@@ -15,6 +15,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
@@ -26,6 +27,7 @@ import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.OverScroller;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,6 +51,9 @@ public class ImageViewActivity extends Activity {
 
     private GestureDetectorCompat mDetector;
     private ScaleGestureDetector mScaleDetector;
+    private OverScroller mScroller;
+    private final Handler handler = new Handler();
+
     private ImageViewActivity self = this;
 
     @Override
@@ -73,6 +78,7 @@ public class ImageViewActivity extends Activity {
 
         mDetector = new GestureDetectorCompat(this, new MyGestureListener());
         mScaleDetector = new ScaleGestureDetector(this, new MyScaleGestureDetector());
+        mScroller = new OverScroller(getApplicationContext());
     }
 
     @Override
@@ -222,15 +228,41 @@ public class ImageViewActivity extends Activity {
 
         private static final String DEBUG_TAG = "Gestures";
 
-//        @Override
-//        public boolean onDown(MotionEvent event) {
-//            Log.d(DEBUG_TAG, "onDown: " + event.toString());
-//            return true;
-//        }
+        @Override
+        public boolean onDown(MotionEvent event) {
+            Log.d(DEBUG_TAG, "onDown: " + event.toString());
+            mScroller.forceFinished(true);
+            return true;
+        }
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
             Log.d(DEBUG_TAG, "onFling: " + e1.toString() + e2.toString() + "\nvelocity = " + velocityX + "," + velocityY);
+            mScroller.forceFinished(true);
+            Matrix matrix = imageView.getImageMatrix();
+            float[] values = new float[9];
+            matrix.getValues(values);
+            int startX = (int) values[2];
+            int startY = (int) values[5];
+            mScroller.fling(startX, startY, (int) velocityX, (int) velocityY,
+                    (int)-Float.MAX_VALUE, (int)Float.MAX_VALUE,
+                    (int)-Float.MAX_VALUE, (int)Float.MAX_VALUE);
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mScroller.computeScrollOffset();
+                    Matrix matrix = imageView.getImageMatrix();
+                    float[] values = new float[9];
+                    matrix.getValues(values);
+                    values[2] = mScroller.getCurrX();
+                    values[5] = mScroller.getCurrY();
+                    matrix.setValues(values);
+                    imageView.setImageMatrix(matrix);
+                    imageView.invalidate();
+                    if (!mScroller.isFinished())
+                        handler.postDelayed(this, 10);
+                }
+            });
             return true;
         }
 
