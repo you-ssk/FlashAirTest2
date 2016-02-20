@@ -1,12 +1,10 @@
 package com.test.flashair.you.flashairtest2;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.Locale;
-import java.util.Map;
 import java.util.TreeMap;
 
 /**

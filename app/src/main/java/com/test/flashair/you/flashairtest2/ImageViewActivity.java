@@ -8,17 +8,22 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapRegionDecoder;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
 import android.util.Size;
+import android.view.GestureDetector;
 import android.view.Menu;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageView;
 
@@ -40,15 +45,18 @@ public class ImageViewActivity extends Activity {
     String directory;
     FileItem item;
     byte[] downloadBitmapByteArray;
+    Size bitmap_size;
 
-    double zoomFactors[] = {1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 2.0};
-    int zoomIndex = 0;
+    private GestureDetectorCompat mDetector;
+    private ScaleGestureDetector mScaleDetector;
+    private ImageViewActivity self = this;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_view);
         imageView = (ImageView) findViewById(R.id.imageView1);
+        imageView.setScaleType(ImageView.ScaleType.MATRIX);
 
         Bundle extrasData = getIntent().getExtras();
         flashAirName = extrasData.getString("flashAirName");
@@ -59,31 +67,32 @@ public class ImageViewActivity extends Activity {
         setupButton();
         File cacheDir = getCacheDir();
         File file = new File(cacheDir, filename);
-        viewThumbnail(file);
+        Bitmap bitmap = BitmapFactory.decodeFile(file.toString());
+        bitmap_size = new Size(bitmap.getWidth(), bitmap.getHeight());
+        imageView.setImageBitmap(bitmap);
 
-        imageView.setOnClickListener(new AdapterView.OnClickListener() {
-            @Override
-            public void onClick(View view){
-                if (downloadBitmapByteArray == null)
-                    return;
+        mDetector = new GestureDetectorCompat(this, new MyGestureListener());
+        mScaleDetector = new ScaleGestureDetector(this, new MyScaleGestureDetector());
+    }
 
-                zoomIndex += 1;
-                double zoomFactor = zoomFactors[zoomIndex % zoomFactors.length];
-                BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inJustDecodeBounds = true;
-                BitmapFactory.decodeByteArray(downloadBitmapByteArray, 0, downloadBitmapByteArray.length, opts);
-                Size orgSize = new Size(opts.outWidth, opts.outHeight);
-                Point pos = new Point(orgSize.getWidth() / 2, orgSize.getHeight() / 2);
-                Bitmap bitmap = getBitmap(downloadBitmapByteArray, pos, zoomFactor);
-                imageView.setImageBitmap(bitmap);
-            }
-        });
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        if (!hasWindowFocus)
+            return;
+        Reset();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         //getMenuInflater().inflate(R.menu.image_view, menu);
         return true;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        boolean retVal = mScaleDetector.onTouchEvent(event);
+        retVal = mDetector.onTouchEvent(event) || retVal;
+        return retVal || super.onTouchEvent(event);
     }
 
     void downloadFile(final String downloadFile, String directory) {
@@ -118,10 +127,6 @@ public class ImageViewActivity extends Activity {
         });
     }
 
-    void viewThumbnail(File file) {
-        imageView.setImageBitmap(BitmapFactory.decodeFile(file.toString()));
-    }
-
     void viewImage(final byte[] bitmapByteArray) {
         if (bitmapByteArray == null) {
             imageView.setImageResource(R.drawable.ic_launcher);
@@ -129,20 +134,11 @@ public class ImageViewActivity extends Activity {
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = 4;
             Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.length, opts);
+            bitmap_size = new Size(bitmap.getWidth(), bitmap.getHeight());
             imageView.setImageBitmap(bitmap);
             downloadBitmapByteArray = bitmapByteArray;
+            Reset();
         }
-    }
-
-    void viewImageRegion(final byte[] bitmapByteArray) {
-        BitmapFactory.Options opts = new BitmapFactory.Options();
-        opts.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.length, opts);
-        Size orgSize = new Size(opts.outWidth, opts.outHeight);
-        Point pos = new Point(orgSize.getWidth() / 2, orgSize.getHeight() / 2);
-        Bitmap bitmap = getBitmap(bitmapByteArray, pos, 1.0);
-        imageView.setImageBitmap(bitmap);
-        downloadBitmapByteArray = bitmapByteArray;
     }
 
     Bitmap getBitmap(final byte[] bitmapByteArray, Point pos, double zoomFactor) {
@@ -192,11 +188,87 @@ public class ImageViewActivity extends Activity {
         cr.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
     }
 
-
     private ImageDownloader.ImageDownloadCompleted listener = new ImageDownloader.ImageDownloadCompleted() {
         public void onCompleted(byte[] byteArray) {
-            //viewImage(byteArray);
-            viewImageRegion(byteArray);
+            downloadBitmapByteArray = byteArray;
+            viewImage(byteArray);
         }
     };
+
+    private void ZoomTo(float scale, float x, float y) {
+        Matrix matrix = imageView.getImageMatrix();
+        matrix.postScale(scale, scale, x, y);
+        imageView.setImageMatrix(matrix);
+        imageView.invalidate();
+    }
+
+    private void Scroll(float x, float y) {
+        Matrix matrix = imageView.getImageMatrix();
+        matrix.postTranslate(x, y);
+        imageView.setImageMatrix(matrix);
+        imageView.invalidate();
+    }
+
+    private void Reset() {
+        Matrix matrix = new Matrix();
+        RectF src = new RectF(0, 0, bitmap_size.getWidth(), bitmap_size.getHeight());
+        RectF dst = new RectF(0, 0, imageView.getWidth(), imageView.getHeight());
+        matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
+        imageView.setImageMatrix(matrix);
+        imageView.invalidate();
+    }
+
+    private class MyGestureListener extends GestureDetector.SimpleOnGestureListener {
+
+        private static final String DEBUG_TAG = "Gestures";
+
+//        @Override
+//        public boolean onDown(MotionEvent event) {
+//            Log.d(DEBUG_TAG, "onDown: " + event.toString());
+//            return true;
+//        }
+
+        @Override
+        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            Log.d(DEBUG_TAG, "onFling: " + e1.toString() + e2.toString() + "\nvelocity = " + velocityX + "," + velocityY);
+            return true;
+        }
+
+        @Override
+        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+            Log.d(DEBUG_TAG, "onScroll: e1 = " + e1.toString() + "\ne2 = " + e2.toString() + "\ndistance = " + distanceX + "," + distanceY);
+            Scroll(-distanceX, -distanceY);
+            return true;
+        }
+
+        @Override
+        public boolean onSingleTapConfirmed(MotionEvent e) {
+            Log.d(DEBUG_TAG, "onSingleTapConfirmed: " + e.toString());
+            self.ZoomTo(1.3f, e.getX(), e.getY());
+            return true;
+        }
+
+        @Override
+        public boolean onDoubleTap(MotionEvent e) {
+            Log.d(DEBUG_TAG, "onDoubleTap: " + e.toString());
+            self.Reset();
+            return true;
+        }
+
+        @Override
+        public void onLongPress(MotionEvent e) {
+            Log.d(DEBUG_TAG, "onLongPress: " + e.toString());
+        }
+    }
+
+    private class MyScaleGestureDetector extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+        private static final String DEBUG_TAG = "ScaleGestures";
+
+        @Override
+        public boolean onScale(ScaleGestureDetector detector) {
+            Log.d(DEBUG_TAG, "onScale: " + detector.toString());
+            ZoomTo(detector.getScaleFactor(), detector.getFocusX(), detector.getFocusY());
+            return true;
+        }
+    }
 }
