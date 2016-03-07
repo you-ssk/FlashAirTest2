@@ -31,15 +31,15 @@ public class FileItem implements Serializable {
         attribute = Integer.parseInt(data[3]);
         int iDate = Integer.parseInt(data[4]);
 
-        int year = (iDate & 0b1111_1110_0000_0000) >> 9 + 1980;
-        int month = (iDate & 0b0000_0001_1110_0000) >> 5;
-        int day = (iDate & 0b0000_0000_0001_1111);
+        int year  = ((iDate & 0b1111_1110_0000_0000) >> 9) + 1980;
+        int month = ((iDate & 0b0000_0001_1110_0000) >> 5);
+        int day   =  (iDate & 0b0000_0000_0001_1111);
 
         int iTime = Integer.parseInt(data[5]);
         int hour = (iTime & 0b1111_1000_0000_0000) >> 11;
-        int min = (iTime & 0b0000_0111_1110_0000) >> 5;
-        int sec = (iTime & 0b0000_0000_0001_1111) * 2;
-        date = new GregorianCalendar(year, month, day, hour, min, sec);
+        int min  = (iTime & 0b0000_0111_1110_0000) >> 5;
+        int sec  = (iTime & 0b0000_0000_0001_1111) * 2;
+        date = new GregorianCalendar(year, month-1, day, hour, min, sec);
     }
 
     static public boolean isJpeg(String filename) {

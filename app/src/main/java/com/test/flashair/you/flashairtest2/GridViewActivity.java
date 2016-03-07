@@ -25,11 +25,12 @@ import java.util.TreeMap;
  * Created by you on 2016/01/15.
  */
 public class GridViewActivity extends Activity {
-    ImageAdapter imageAdapter;
     String flashAirName;
     String directoryName;
-    TreeMap<String, FileItem> imageItems;
-    ArrayList<String> fileNames;
+
+    ImageAdapter mImageAdapter;
+    TreeMap<String, FileItem> mImageItems;
+    ArrayList<String> mFileNames;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,44 +38,43 @@ public class GridViewActivity extends Activity {
         setContentView(R.layout.activity_grid_view);
         final GridView gridView = (GridView) findViewById(R.id.gridview);
 
-        imageAdapter = new ImageAdapter(this);
-        fileNames = new ArrayList<>();
+        mImageAdapter = new ImageAdapter(this);
+        mFileNames = new ArrayList<>();
 
         Bundle extrasData = getIntent().getExtras();
-        String[] filenames = extrasData.getStringArray("filenames");
         flashAirName = extrasData.getString("FlashAirName");
         directoryName = extrasData.getString("DirectoryName");
         Serializable s = extrasData.getSerializable("ImageItems");
+
         HashMap<String, FileItem> hashMap = (HashMap<String, FileItem>) (s);
-        imageItems = FileItem.createMap();
+        mImageItems = FileItem.createMap();
         for (String filename : hashMap.keySet()) {
             if (FileItem.isJpeg(filename)) {
-                imageItems.put(filename, hashMap.get(filename));
+                mImageItems.put(filename, hashMap.get(filename));
             }
         }
 
-        setThumbnails(gridView, filenames);
+        setThumbnails(gridView);
 
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String filename = fileNames.get(position);
+                String filename = mFileNames.get(position);
                 if (FileItem.isJpeg(filename)) {
                     Intent viewImageIntent = new Intent(getApplicationContext(), ImageViewActivity.class);
-                    viewImageIntent.putExtra("flashAirName", flashAirName);
-                    viewImageIntent.putExtra("downloadFile", filename);
-                    viewImageIntent.putExtra("directoryName", directoryName);
-                    viewImageIntent.putExtra("ImageItem", imageItems.get(filename));
+                    viewImageIntent.putExtra("FlashAirName", flashAirName);
+                    viewImageIntent.putExtra("DirectoryName", directoryName);
+                    viewImageIntent.putExtra("ImageItem", mImageItems.get(filename));
                     GridViewActivity.this.startActivity(viewImageIntent);
                 }
             }
         });
     }
 
-    private void setThumbnails(GridView gridView, String[] filenames) {
+    private void setThumbnails(GridView gridView) {
         File cachePath = getCacheDir();
         int maxWidth = 0;
-        for (FileItem item : imageItems.values()) {
+        for (FileItem item : mImageItems.values()) {
             String filename = item.filename;
             File file = new File(cachePath, filename);
             try {
@@ -84,8 +84,8 @@ public class GridViewActivity extends Activity {
                 thumbnail = Bitmap.createScaledBitmap(thumbnail, (int)(thumbnail.getWidth() * thumbnailScale), (int)(thumbnail.getHeight() * thumbnailScale), false);
                 if (thumbnail != null) {
                     maxWidth = Math.max(thumbnail.getWidth(), maxWidth);
-                    imageAdapter.addBitmap(thumbnail);
-                    fileNames.add(filename);
+                    mImageAdapter.addBitmap(thumbnail);
+                    mFileNames.add(filename);
                 }
             } catch (IOException e) {
                 Log.i("IOException", e.toString());
@@ -95,8 +95,8 @@ public class GridViewActivity extends Activity {
         Display d = getWindowManager().getDefaultDisplay();
         DisplayMetrics displayMetrics = new DisplayMetrics();
         d.getMetrics(displayMetrics);
-        int columns = displayMetrics.widthPixels / ((int) (maxWidth) + gridView.getVerticalSpacing());
+        int columns = displayMetrics.widthPixels / ((maxWidth) + gridView.getVerticalSpacing());
         gridView.setNumColumns(columns);
-        gridView.setAdapter(imageAdapter);
+        gridView.setAdapter(mImageAdapter);
     }
 }

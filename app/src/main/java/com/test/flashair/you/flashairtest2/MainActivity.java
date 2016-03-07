@@ -28,13 +28,18 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.support.v7.widget.Toolbar;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -43,24 +48,21 @@ public class MainActivity
         extends AppCompatActivity
         implements AdapterView.OnItemClickListener {
 
-    ListView listView;
-    Button gridButton;
-    TextView currentDirText;
-    TextView numFilesText;
+    ListView mListView;
+    SimpleAdapter mListAdapter;
+    Button mGridButton;
 
-    String flashAirName;
-    String defaultFlashAirName = "192.168.0.255";
-    String rootDir = "DCIM/101NCD90";
-    String defaultRootDir = "DCIM/101NCD90";
-
-    String directoryName = rootDir;
-    SimpleAdapter listAdapter;
+    static String defaultFlashAirName = "192.168.0.255";
+    static String defaultRootDir = "DCIM/101NCD90";
+    String mFlashAirName = defaultFlashAirName;
+    String mRootDir = defaultRootDir;
+    String mDirectoryName = mRootDir;
 
     int checkInterval = 5000;
-    Handler updateHandler;
-    boolean viewingList;
-    SharedPreferences.OnSharedPreferenceChangeListener prefListener;
-    TreeMap<String, FileItem> imageItems;
+    Handler mUpdateHandler;
+    boolean mViewingList;
+    SharedPreferences.OnSharedPreferenceChangeListener mPrefListener;
+    TreeMap<String, FileItem> mImageItems;
 
     private static final String PREF_KEY_FLASH_AIR_NAME = "FlashAirName";
     private static final String PREF_KEY_ROOT_DIR = "RootDir";
@@ -68,77 +70,29 @@ public class MainActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         String[] perms = {
-                "android.permission.INTERNET",
+                //"android.permission.INTERNET",
                 "android.permission.WRITE_EXTERNAL_STORAGE",
                 "android.permission.READ_EXTERNAK_STORAGE",
                 //"android.permission.ACCESS_NETWORK_STATE",
                 //"android.permission.ACCESS_WIFI_STATE"
         };
         int permsRequestCode = 200;
-        //requestPermissions(perms, permsRequestCode);
+        requestPermissions(perms, permsRequestCode);
+
         setContentView(R.layout.activity_main);
         Toolbar main_toolbar = (Toolbar) findViewById(R.id.main_toolbar);
         setSupportActionBar(main_toolbar);
+        setupPrefListener();
+        readPref();
+        setupGridButton();
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
-            @Override
-            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                if (key.equals(PREF_KEY_ROOT_DIR)) {
-                    rootDir = sharedPreferences.getString(key, defaultRootDir);
-                    listRootDirectory();
-                } else if (key.equals(PREF_KEY_FLASH_AIR_NAME)) {
-                    flashAirName = sharedPreferences.getString(key, defaultFlashAirName);
-                    listRootDirectory();
-                }
-            }
-        };
-        prefs.registerOnSharedPreferenceChangeListener(prefListener);
-        flashAirName = prefs.getString(PREF_KEY_FLASH_AIR_NAME, defaultFlashAirName);
-        rootDir = prefs.getString(PREF_KEY_ROOT_DIR, defaultRootDir);
+        mViewingList = true;
+        mImageItems = FileItem.createMap();
+        mUpdateHandler = new Handler();
 
-        Log.i("FlashAirName = ", flashAirName);
-        Log.i("RootDir = ", rootDir);
-
-        viewingList = true;
-        imageItems = FileItem.createMap();
-
-        boolean b = Patterns.IP_ADDRESS.matcher(flashAirName).matches();
-
-        try {
-            gridButton = (Button) findViewById(R.id.button_grid);
-            gridButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent gridViewIntent = new Intent(MainActivity.this, GridViewActivity.class);
-
-                    SimpleAdapter adapter = MainActivity.this.listAdapter;
-                    if (adapter != null) {
-                        ArrayList<String> filenames = new ArrayList<>();
-                        for (int i = 0; i < adapter.getCount(); i++) {
-                            Map<String, Object> item = (Map<String, Object>) adapter.getItem(i);
-                            String filename = item.get("fname").toString();
-                            if (FileItem.isJpeg(filename)) {
-                                filenames.add(filename);
-                            }
-                        }
-                        String[] fnames = filenames.toArray(new String[filenames.size()]);
-                        gridViewIntent.putExtra("filenames", fnames);
-                        gridViewIntent.putExtra("FlashAirName", flashAirName);
-                        gridViewIntent.putExtra("DirectoryName", directoryName);
-                        gridViewIntent.putExtra("ImageItems", imageItems);
-                    }
-                    MainActivity.this.startActivity(gridViewIntent);
-                }
-            });
-            listRootDirectory();
-        } catch (Exception e) {
-            Log.e("ERROR", "ERROR in CODE:" + e.toString());
-            e.printStackTrace();
-        }
-        updateHandler = new Handler();
-
+        listRootDirectory();
         startUpdate();
     }
 
@@ -152,11 +106,11 @@ public class MainActivity
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        viewingList = hasFocus;
+        mViewingList = hasFocus;
     }
 
     public boolean checkIfListView() {
-        return viewingList;
+        return mViewingList;
     }
 
     public Runnable statusChecker = new Runnable() {
@@ -172,12 +126,12 @@ public class MainActivity
                     @Override
                     protected void onPostExecute(String status) {
                         if (status.equals("1")) {
-                            listDirectory(directoryName);
+                            listDirectory(mDirectoryName);
                         }
                     }
-                }.execute("http://" + flashAirName + "/command.cgi?op=102");
+                }.execute("http://" + mFlashAirName + "/command.cgi?op=102");
             }
-            updateHandler.postDelayed(statusChecker, checkInterval);
+            mUpdateHandler.postDelayed(statusChecker, checkInterval);
         }
     };
 
@@ -186,7 +140,7 @@ public class MainActivity
     }
 
     public void stopUpdate() {
-        updateHandler.removeCallbacks(statusChecker);
+        mUpdateHandler.removeCallbacks(statusChecker);
     }
 
     @Override
@@ -227,99 +181,157 @@ public class MainActivity
         Object item = l.getItemAtPosition(position);
         if (item instanceof Map<?, ?>) {
             Map<String, Object> mapItem = (Map<String, Object>) item;
-            Object downloadFile = mapItem.get("fname");
-            if (downloadFile.toString().endsWith("/")) {
-                String dirName = downloadFile.toString().substring(0, downloadFile.toString().length() - 1);
-                directoryName = directoryName + "/" + dirName;
-                listDirectory(directoryName);
-            } else if (FileItem.isJpeg(downloadFile.toString())) {
+            String filenName = mapItem.get("fname").toString();
+            if (filenName.endsWith("/")) {
+                String dirName = filenName.substring(0, filenName.length() - 1);
+                mDirectoryName = mDirectoryName + "/" + dirName;
+                listDirectory(mDirectoryName);
+            } else if (FileItem.isJpeg(filenName)) {
                 Intent viewImageIntent = new Intent(this, ImageViewActivity.class);
-                viewImageIntent.putExtra("flashAirName", flashAirName);
-                viewImageIntent.putExtra("downloadFile", downloadFile.toString());
-                viewImageIntent.putExtra("directoryName", directoryName);
-                viewImageIntent.putExtra("ImageItem", imageItems.get(downloadFile.toString()));
+                viewImageIntent.putExtra("FlashAirName", mFlashAirName);
+                viewImageIntent.putExtra("DirectoryName", mDirectoryName);
+                viewImageIntent.putExtra("ImageItem", mImageItems.get(filenName));
                 MainActivity.this.startActivity(viewImageIntent);
             }
         }
     }
 
     public void listRootDirectory() {
-        directoryName = rootDir;
-        listDirectory(directoryName);
+        mDirectoryName = mRootDir;
+        listDirectory(mDirectoryName);
     }
 
     public void listDirectory(String dir) {
-        currentDirText = (TextView) findViewById(R.id.textView1);
-        currentDirText.setText(dir + "/");
+        ((TextView) findViewById(R.id.textView1)).setText(dir + "/");
         dir = "/" + dir;
-        numFilesText = (TextView) findViewById(R.id.textView2);
 
         new AsyncTask<String, Void, String>() {
             @Override
             protected String doInBackground(String... params) {
-                String dir = params[0];
-                return FlashAirRequest.getString("http://" + flashAirName + "/command.cgi?op=101&DIR=" + dir);
+                return FlashAirRequest.getFileCount(mFlashAirName, params[0]);
             }
 
             @Override
             protected void onPostExecute(String fileCount) {
-                numFilesText.setText("Items Found: " + fileCount);
+                ((TextView) findViewById(R.id.textView2)).setText("Items Found: " + fileCount);
             }
         }.execute(dir);
 
         new AsyncTask<String, Void, ListAdapter>() {
             @Override
             protected ListAdapter doInBackground(String... params) {
-                String dir = params[0];
-                String files = FlashAirRequest.getString("http://" + flashAirName + "/command.cgi?op=100&DIR=" + dir);
-                FileItem.parse(imageItems, files);
-
+                String files = FlashAirRequest.getFileList(mFlashAirName, params[0]);
+                FileItem.parse(mImageItems, files);
                 ArrayList<Map<String, Object>> data = new ArrayList<>();
-
-                for (FileItem item : imageItems.values()) {
+                for (FileItem item : mImageItems.values()) {
                     String filename = item.filename;
                     if (!FileItem.isJpeg(filename)) {
                         continue;
                     }
-                    File file = new File(getCacheDir(), filename);
-                    Map<String, Object> entry = new HashMap<>();
-                    if (!file.exists()) {
-                        String command = "http://" + flashAirName + "/thumbnail.cgi?" + directoryName + "/" + filename;
-                        byte[] thumbnail = FlashAirRequest.getBitmapByteArray(command);
-                        if (thumbnail != null) {
-                            try {
-                                OutputStream os = new FileOutputStream(file);
-                                os.write(thumbnail);
-                                os.close();
-                            } catch (IOException e) {
-                                Log.i("Exception", e.toString());
-                            }
-                        }
+                    {
+                        updateCachedThumbnail(item);
+                        Map<String, Object> entry = new HashMap<>();
+                        entry.put("filename", filename);
+                        entry.put("fname", filename);
+                        data.add(entry);
                     }
-                    entry.put("filename", filename);
-                    entry.put("fname", filename);
-                    data.add(entry);
                 }
-                listAdapter = new SimpleAdapter(
+
+                mListAdapter = new SimpleAdapter(
                         MainActivity.this,
                         data,
                         android.R.layout.activity_list_item,
                         new String[]{"filename", "fname"},
                         new int[]{android.R.id.icon, android.R.id.text1});
-                listAdapter.setViewBinder(new CustomViewBinder());
-                return listAdapter;
+                mListAdapter.setViewBinder(new CustomViewBinder());
+                return mListAdapter;
             }
 
             @Override
             protected void onPostExecute(ListAdapter listAdapter) {
-                listView = (ListView) findViewById(R.id.listView1);
-                ColorDrawable divcolor = new ColorDrawable(Color.rgb(17, 19, 58));
-                listView.setDivider(divcolor);
-                listView.setDividerHeight(1);
-                listView.setAdapter(listAdapter);
-                listView.setOnItemClickListener(MainActivity.this);
+                ((TextView) findViewById(R.id.textView2)).setText("Items Found(jpeg): " + listAdapter.getCount());
+                mListView = (ListView) findViewById(R.id.listView1);
+                mListView.setDivider(new ColorDrawable(Color.rgb(17, 19, 58)));
+                mListView.setDividerHeight(1);
+                mListView.setAdapter(listAdapter);
+                mListView.setOnItemClickListener(MainActivity.this);
             }
         }.execute(dir);
+    }
+
+    private void setupPrefListener() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        mPrefListener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            @Override
+            public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+                if (key.equals(PREF_KEY_ROOT_DIR)) {
+                    mRootDir = sharedPreferences.getString(key, defaultRootDir);
+                    listRootDirectory();
+                } else if (key.equals(PREF_KEY_FLASH_AIR_NAME)) {
+                    mFlashAirName = sharedPreferences.getString(key, defaultFlashAirName);
+                    listRootDirectory();
+                }
+            }
+        };
+        prefs.registerOnSharedPreferenceChangeListener(mPrefListener);
+    }
+
+    private void readPref() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        mFlashAirName = prefs.getString(PREF_KEY_FLASH_AIR_NAME, defaultFlashAirName);
+        mRootDir = prefs.getString(PREF_KEY_ROOT_DIR, defaultRootDir);
+        if (!Patterns.IP_ADDRESS.matcher(mFlashAirName).matches()) {
+            mFlashAirName = defaultFlashAirName;
+        }
+        Log.i("FlashAirName = ", mFlashAirName);
+        Log.i("RootDir = ", mRootDir);
+    }
+
+    private void setupGridButton() {
+        mGridButton = (Button) findViewById(R.id.button_grid);
+        mGridButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent gridViewIntent = new Intent(MainActivity.this, GridViewActivity.class);
+
+                SimpleAdapter adapter = MainActivity.this.mListAdapter;
+                if (adapter != null) {
+                    gridViewIntent.putExtra("FlashAirName", mFlashAirName);
+                    gridViewIntent.putExtra("DirectoryName", mDirectoryName);
+                    gridViewIntent.putExtra("ImageItems", mImageItems);
+                }
+                MainActivity.this.startActivity(gridViewIntent);
+            }
+        });
+    }
+
+    private void updateCachedThumbnail(FileItem item){
+        String filename = item.filename;
+        File cachedFile = new File(getCacheDir(), filename);
+        boolean isNeedUpdate = false;
+        if (! cachedFile.exists()){
+            isNeedUpdate = true;
+        } else {
+            long d1 = cachedFile.lastModified();
+            long d2 = item.date.getTimeInMillis();
+            if (d1 < d2){
+                isNeedUpdate = true;
+            }
+        }
+        if (isNeedUpdate){
+            String filePath = mDirectoryName + "/" + filename;
+            byte[] thumbnail = FlashAirRequest.getThumbnail(mFlashAirName, filePath);
+            if (thumbnail != null) {
+                try {
+                    OutputStream os = new FileOutputStream(cachedFile.getPath());
+                    os.write(thumbnail);
+                    os.close();
+                } catch (IOException e) {
+                    Log.i("Exception", e.toString());
+                }
+            }
+
+        }
     }
 
     class CustomViewBinder implements SimpleAdapter.ViewBinder {

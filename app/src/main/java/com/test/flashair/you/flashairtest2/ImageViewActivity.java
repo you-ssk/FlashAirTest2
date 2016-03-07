@@ -6,12 +6,9 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.BitmapRegionDecoder;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Point;
 import android.graphics.PorterDuff;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Environment;
@@ -28,6 +25,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.OverScroller;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -43,7 +41,7 @@ public class ImageViewActivity extends Activity {
     Button downButton;
 
     String flashAirName;
-    String filename;
+    //String filename;
     String directory;
     FileItem item;
     byte[] downloadBitmapByteArray;
@@ -65,14 +63,13 @@ public class ImageViewActivity extends Activity {
         imageView.setScaleType(ImageView.ScaleType.MATRIX);
 
         Bundle extrasData = getIntent().getExtras();
-        flashAirName = extrasData.getString("flashAirName");
-        filename = extrasData.getString("downloadFile");
-        directory = extrasData.getString("directoryName");
+        flashAirName = extrasData.getString("FlashAirName");
+        directory = extrasData.getString("DirectoryName");
         item = (FileItem) extrasData.getSerializable("ImageItem");
 
         setupButton();
         File cacheDir = getCacheDir();
-        File file = new File(cacheDir, filename);
+        File file = new File(cacheDir, item.filename);
         Bitmap bitmap = BitmapFactory.decodeFile(file.toString());
         bitmap_size = new Size(bitmap.getWidth(), bitmap.getHeight());
         imageView.setImageBitmap(bitmap);
@@ -122,14 +119,14 @@ public class ImageViewActivity extends Activity {
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                saveImage(downloadBitmapByteArray, filename);
+                saveImage(downloadBitmapByteArray, item.filename);
             }
         });
 
         downButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                downloadFile(filename, directory);
+                downloadFile(item.filename, directory);
             }
         });
     }
@@ -148,28 +145,6 @@ public class ImageViewActivity extends Activity {
         }
     }
 
-    Bitmap getBitmap(final byte[] bitmapByteArray, Point pos, double zoomFactor) {
-        BitmapFactory.Options opts = new BitmapFactory.Options();
-        opts.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(bitmapByteArray, 0, bitmapByteArray.length, opts);
-
-        Rect rect;
-        BitmapFactory.Options regionOpts = new BitmapFactory.Options();
-        {
-            int preferredWidth = (int) (opts.outWidth / zoomFactor);
-            int preferredHeight = (int) (opts.outHeight / zoomFactor);
-            rect = new Rect(pos.x - preferredWidth / 2, pos.y - preferredHeight / 2, preferredWidth, preferredHeight);
-            regionOpts.inSampleSize = Math.max(preferredWidth / imageView.getWidth(), preferredHeight / imageView.getHeight());
-        }
-        try {
-            BitmapRegionDecoder regionDecoder = BitmapRegionDecoder.newInstance(bitmapByteArray, 0, bitmapByteArray.length, true);
-            return regionDecoder.decodeRegion(rect, regionOpts);
-        } catch (IOException e) {
-            Log.e("IOException", e.toString());
-        }
-        return null;
-    }
-
     void saveImage(byte[] bitmapByteArray, String filename) {
         String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString() + "/flashair";
         File dir = new File(path);
@@ -185,13 +160,14 @@ public class ImageViewActivity extends Activity {
         } catch (IOException e) {
             Log.e("ERROR:", e.toString());
         }
+        Toast.makeText(getApplicationContext(), "saved.", Toast.LENGTH_LONG).show();
     }
 
     void updateContent(String filename) {
         ContentValues values = new ContentValues();
         ContentResolver cr = getContentResolver();
         values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        values.put("_data", filename.toString());
+        values.put("_data", filename);
         cr.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
     }
 
@@ -311,4 +287,5 @@ public class ImageViewActivity extends Activity {
             return true;
         }
     }
+
 }

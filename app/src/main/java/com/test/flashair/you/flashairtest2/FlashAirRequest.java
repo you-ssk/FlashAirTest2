@@ -16,18 +16,29 @@ import java.net.URLConnection;
  * Created by you on 2016/01/04.
  */
 public class FlashAirRequest {
+    static public String getFileCount(String name, String dir) {
+        return FlashAirRequest.getString("http://" + name + "/command.cgi?op=101&DIR=" + dir);
+    }
+
+    static public String getFileList(String name, String dir) {
+        return FlashAirRequest.getString("http://" + name + "/command.cgi?op=100&DIR=" + dir);
+    }
+
+    static public  byte[] getThumbnail(String flashAirName, String file){
+        return getBitmapByteArray("http://" + flashAirName + "/thumbnail.cgi?" + file);
+    }
     static public String getString(String command) {
-        String result = "";
+        String result;
         try {
             URL url = new URL(command);
             URLConnection urlCon = url.openConnection();
             urlCon.connect();
             InputStream inputStream = urlCon.getInputStream();
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
-            StringBuffer strBuf = new StringBuffer();
+            StringBuilder strBuf = new StringBuilder();
             String str;
             while ((str = bufferedReader.readLine()) != null) {
-                if (strBuf.toString() != "")
+                if (! strBuf.toString().equals(""))
                     strBuf.append("\n");
                 strBuf.append(str);
             }
@@ -36,7 +47,7 @@ public class FlashAirRequest {
             Log.e("ERROR", "ERROR: " + e.toString());
             e.printStackTrace();
             result = e.toString();
-        } catch (IOException e) {
+        } catch (IOException e){
             Log.e("ERROR", "ERROR: " + e.toString());
             e.printStackTrace();
             result = e.toString();
@@ -53,7 +64,7 @@ public class FlashAirRequest {
             InputStream inputStream = urlCon.getInputStream();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             byte[] byteChunk = new byte[2048];
-            int bytesRead = 0;
+            int bytesRead;
             while ((bytesRead = inputStream.read(byteChunk)) != -1) {
                 byteArrayOutputStream.write(byteChunk, 0, bytesRead);
             }
