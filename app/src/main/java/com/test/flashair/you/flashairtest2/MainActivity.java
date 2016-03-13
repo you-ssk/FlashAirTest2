@@ -27,19 +27,15 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.support.v7.widget.Toolbar;
+import android.widget.Toast;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -51,6 +47,7 @@ public class MainActivity
     ListView mListView;
     SimpleAdapter mListAdapter;
     Button mGridButton;
+    Button mDateButton;
 
     static String defaultFlashAirName = "192.168.0.255";
     static String defaultRootDir = "DCIM/101NCD90";
@@ -87,6 +84,7 @@ public class MainActivity
         setupPrefListener();
         readPref();
         setupGridButton();
+        setupDateButton();
 
         mViewingList = true;
         mImageItems = FileItem.createMap();
@@ -301,6 +299,20 @@ public class MainActivity
                     gridViewIntent.putExtra("ImageItems", mImageItems);
                 }
                 MainActivity.this.startActivity(gridViewIntent);
+            }
+        });
+    }
+
+    private void setupDateButton(){
+        mDateButton = (Button) findViewById(R.id.button_expandable);
+        mDateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(getApplicationContext(), "EXPAND.", Toast.LENGTH_SHORT).show();
+
+                Intent dateViewIntent = new Intent(MainActivity.this, ExpandableDateViewActivity.class);
+                dateViewIntent.putExtra("ImageItems", mImageItems);
+                MainActivity.this.startActivity(dateViewIntent);
             }
         });
     }
