@@ -27,7 +27,6 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.support.v7.widget.Toolbar;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -308,9 +307,9 @@ public class MainActivity
         mDateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(getApplicationContext(), "EXPAND.", Toast.LENGTH_SHORT).show();
-
                 Intent dateViewIntent = new Intent(MainActivity.this, ExpandableDateViewActivity.class);
+                dateViewIntent.putExtra("FlashAirName", mFlashAirName);
+                dateViewIntent.putExtra("DirectoryName", mDirectoryName);
                 dateViewIntent.putExtra("ImageItems", mImageItems);
                 MainActivity.this.startActivity(dateViewIntent);
             }
